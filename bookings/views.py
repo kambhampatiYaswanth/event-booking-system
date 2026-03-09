@@ -13,57 +13,53 @@ class LockSeatView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        seat_id = request.data.get("seat_id")
+        seat_ids = request.data.get("seat_ids")
 
-        if not seat_id:
-            return Response(
-                {"error": "seat_id is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        if not seat_ids:
+            return Response({"error": "seat_ids required"}, status=400)
 
-        try:
+        if len(seat_ids) > 6:
+            return Response({"error": "Maximum 6 seats allowed"}, status=400)
+
+        locked_seats = []
+
+        for seat_id in seat_ids:
             seat = lock_seat(request.user, seat_id)
+            locked_seats.append(seat.id)
 
-            return Response(
-                {"message": "Seat locked successfully", "seat_id": seat.id},
-                status=status.HTTP_200_OK
-            )
-
-        except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        return Response({
+            "message": "Seats locked",
+            "seats": locked_seats
+        })
 class ConfirmBookingView(APIView):
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
 
-        seat_id = request.data.get("seat_id")
+        seat_ids = request.data.get("seat_ids")
 
-        if not seat_id:
-            return Response(
-                {"error": "seat_id is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        seats = Seat.objects.filter(id__in=seat_ids)
 
-        try:
-            booking = confirm_booking(request.user, seat_id)
+        event = seats.first().event
 
-            return Response(
-                {
-                    "message": "Booking confirmed successfully",
-                    "booking_id": booking.id
-                },
-                status=status.HTTP_200_OK
-            )
+        booking = Booking.objects.create(
+            user=request.user,
+            event=event,
+            status="CONFIRMED"
+        )
 
-        except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+        booking.seats.set(seats)
+
+        for seat in seats:
+            seat.is_booked = True
+            seat.is_locked = False
+            seat.locked_by = None
+            seat.save()
+
+        return Response({
+            "message": "Booking confirmed"
+        })
 class MyBookingsView(ListAPIView):
     serializer_class = BookingSerializer
     permission_classes = [IsAuthenticated]

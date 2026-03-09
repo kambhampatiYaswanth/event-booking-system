@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams} from "react-router-dom";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 
 function Seats() {
   const { id } = useParams();
-  const navigate = useNavigate();
-
+  const [timeLeft, setTimeLeft] = useState(300);
   const [seats, setSeats] = useState([]);
-  const [selectedSeat, setSelectedSeat] = useState(null);
+  const [selectedSeats, setSelectedSeats] = useState([]);
 
   // Fetch seats
   useEffect(() => {
@@ -27,6 +26,37 @@ function Seats() {
 
     fetchSeats();
   }, [id]);
+  useEffect(() => {
+
+    if (selectedSeats.length === 0) return;
+
+    setTimeLeft(300);
+
+    const timer = setInterval(() => {
+
+      setTimeLeft(prev => {
+
+        if (prev <= 1) {
+
+          clearInterval(timer);
+          alert("Seat hold expired!");
+
+          setSelectedSeats([]);
+
+          window.location.reload();
+
+          return 0;
+        }
+
+        return prev - 1;
+
+      });
+
+    }, 1000);
+
+    return () => clearInterval(timer);
+
+  }, [selectedSeats]);  
 
   // Get logged in user
   let userId = null;
@@ -40,31 +70,66 @@ function Seats() {
     console.error("Token decode failed:", error);
   }
 
-  const handleSeatClick = async (seatId) => {
-    try {
-      const token = localStorage.getItem("access");
+    const handleSeatClick = async (seatId) => {
 
-      await axios.post(
-        "https://event-booking-backend-wx17.onrender.com/api/bookings/lock-seat/",
-        { seat_id: seatId },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
+      // If seat already selected → UNSELECT
+      if (selectedSeats.includes(seatId)) {
+        setSelectedSeats(selectedSeats.filter(id => id !== seatId));
+        return;
+      }
+
+      // Limit 6 seats
+      if (selectedSeats.length >= 6) {
+        alert("Maximum 6 seats allowed");
+        return;
+      }
+
+      try {
+
+        const token = localStorage.getItem("access");
+
+        await axios.post(
+          "https://event-booking-backend-wx17.onrender.com/api/bookings/lock-seat/",
+          { seat_id: seatId },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        setSelectedSeats([...selectedSeats, seatId]);
+
+      } catch (error) {
+        alert("Seat could not be locked.");
+      }
+    };
+    const handleConfirmBooking = async () => {
+
+      try {
+
+        const token = localStorage.getItem("access");
+
+        await axios.post(
+          "https://event-booking-backend-wx17.onrender.com/api/bookings/confirm-booking/",
+          {
+            seat_ids: selectedSeats
           },
-        }
-      );
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
-      setSelectedSeat(seatId);
+        alert("Booking confirmed!");
 
-      const response = await axios.get(
-        `https://event-booking-backend-wx17.onrender.com/api/events/${id}/seats/`
-      );
-      setSeats(response.data);
-    } catch (error) {
-      alert("Seat could not be locked.");
-    }
-  };
+        setSelectedSeats([]);
 
+      } catch (error) {
+        alert("Booking failed.");
+      }
+    };
   const totalSeats = seats.length;
   const bookedSeats = seats.filter((seat) => seat.is_booked).length;
   const lockedSeats = seats.filter(
@@ -106,6 +171,20 @@ function Seats() {
           SCREEN
         </div>
       </div>
+      {selectedSeats.length > 0 && (
+
+        <div style={{
+          textAlign: "center",
+          marginBottom: "20px",
+          fontSize: "18px",
+          fontWeight: "bold",
+          color: "red"
+        }}>
+          ⏳ Booking Countdown: {Math.floor(timeLeft / 60)}:
+          {String(timeLeft % 60).padStart(2, "0")}
+        </div>
+
+      )}      
 
       {/* Seat Grid */}
       <div className="flex justify-center">
@@ -119,7 +198,7 @@ function Seats() {
             if (seat.is_booked) {
               seatStyle = "bg-red-500 cursor-not-allowed";
               isDisabled = true;
-            } else if (selectedSeat === seat.id) {
+            } else if (selectedSeats === seat.id) {
               seatStyle = "bg-blue-500 scale-110";
             } else if (seat.locked_by !== null) {
               const lockedBy = Number(seat.locked_by);
@@ -167,14 +246,15 @@ function Seats() {
       </div>
 
       {/* Confirm Button */}
-      {selectedSeat && (
+      {selectedSeats && (
         <div className="flex justify-center mt-10">
-          <button
-            onClick={() => navigate(`/payment/${selectedSeat}`)}
-            className="bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded-xl font-semibold shadow-lg transition duration-300"
-          >
-            Confirm & Proceed
-          </button>
+        <button
+          disabled={timeLeft === 0}
+          onClick={handleConfirmBooking}
+          className="bg-blue-600 text-white px-6 py-2 rounded-lg"
+        >
+          Confirm Booking
+        </button>
         </div>
       )}
     </div>

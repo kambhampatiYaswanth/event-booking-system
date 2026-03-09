@@ -6,6 +6,7 @@ from datetime import timedelta
 from .models import Event, Seat
 from .serializers import EventSerializer, SeatSerializer
 
+LOCK_DURATION = timedelta(minutes=5)
 
 class EventListView(ListAPIView):
     queryset = Event.objects.all()
@@ -18,14 +19,17 @@ class EventSeatListView(ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
+
         event_id = self.kwargs["event_id"]
+
         seats = Seat.objects.filter(event_id=event_id)
 
-        LOCK_DURATION = timedelta(seconds=15)
-
         for seat in seats:
+
             if seat.is_locked and seat.locked_at:
+
                 if timezone.now() - seat.locked_at > LOCK_DURATION:
+
                     seat.is_locked = False
                     seat.locked_by = None
                     seat.locked_at = None
