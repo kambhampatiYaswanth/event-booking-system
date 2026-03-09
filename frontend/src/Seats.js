@@ -198,7 +198,7 @@ function Seats() {
             if (seat.is_booked) {
               seatStyle = "bg-red-500 cursor-not-allowed";
               isDisabled = true;
-            } else if (selectedSeats === seat.id) {
+            } else if (selectedSeats.includes(seat.id)) {
               seatStyle = "bg-blue-500 scale-110";
             } else if (seat.locked_by !== null) {
               const lockedBy = Number(seat.locked_by);
@@ -246,7 +246,7 @@ function Seats() {
       </div>
 
       {/* Confirm Button */}
-      {selectedSeats && (
+      {selectedSeats.length > 0 && (
         <div className="flex justify-center mt-10">
         <button
           disabled={timeLeft === 0}

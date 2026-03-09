@@ -7,30 +7,28 @@ from bookings.services import lock_seat
 from rest_framework.generics import ListAPIView
 from .models import Booking
 from .serializers import BookingSerializer
-
+from events.models import Seat
 
 class LockSeatView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        seat_ids = request.data.get("seat_ids")
 
-        if not seat_ids:
-            return Response({"error": "seat_ids required"}, status=400)
+        seat_id = request.data.get("seat_id")
 
-        if len(seat_ids) > 6:
-            return Response({"error": "Maximum 6 seats allowed"}, status=400)
-
-        locked_seats = []
-
-        for seat_id in seat_ids:
+        try:
             seat = lock_seat(request.user, seat_id)
-            locked_seats.append(seat.id)
 
-        return Response({
-            "message": "Seats locked",
-            "seats": locked_seats
-        })
+            return Response({
+                "message": "Seat locked",
+                "seat_id": seat.id
+            })
+
+        except Exception as e:
+
+            return Response({
+                "error": str(e)
+            }, status=400)
 class ConfirmBookingView(APIView):
 
     permission_classes = [IsAuthenticated]

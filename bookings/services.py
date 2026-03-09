@@ -6,29 +6,36 @@ from events.models import Event
 from bookings.models import Booking
 from django.db import transaction
 
-LOCK_TIMEOUT_SECONDS = 120  # 2 minutes
+LOCK_TIMEOUT_SECONDS = 300  # 5 minutes
+
+
+from events.models import Seat
+from django.utils import timezone
+
+
+from events.models import Seat
+from django.utils import timezone
 
 
 def lock_seat(user, seat_id):
-    with transaction.atomic():
 
-        # Lock the seat row
-        seat = Seat.objects.select_for_update().get(id=seat_id)
+    seat = Seat.objects.get(id=seat_id)
 
-        # Check if already permanently booked
-        if seat.is_booked:
-            raise Exception("Seat already booked")
+    # If seat already booked
+    if seat.is_booked:
+        raise Exception("Seat already booked")
 
-        # Check if locked by someone else and not expired
-        if seat.locked_by and not is_lock_expired(seat):
-            raise Exception("Seat is temporarily locked by another user")
+    # If seat locked by another user
+    if seat.is_locked and seat.locked_by != user:
+        raise Exception("Seat already locked by another user")
 
-        # Lock seat
-        seat.locked_by = user
-        seat.locked_at = timezone.now()
-        seat.save()
+    # Allow same user to re-lock seat
+    seat.is_locked = True
+    seat.locked_by = user
+    seat.locked_at = timezone.now()
+    seat.save()
 
-        return seat
+    return seat
 def confirm_booking(user, seat_id, price=100):
 
     with transaction.atomic():
