@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { useParams} from "react-router-dom";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-
+import { useNavigate } from "react-router-dom";
 function Seats() {
   const { id } = useParams();
   const [timeLeft, setTimeLeft] = useState(300);
   const [seats, setSeats] = useState([]);
   const [selectedSeats, setSelectedSeats] = useState([]);
-
+  const navigate = useNavigate();
   // Fetch seats
   useEffect(() => {
     if (!id) return;
@@ -104,32 +104,6 @@ function Seats() {
         alert("Seat could not be locked.");
       }
     };
-    const handleConfirmBooking = async () => {
-
-      try {
-
-        const token = localStorage.getItem("access");
-
-        await axios.post(
-          "https://event-booking-backend-wx17.onrender.com/api/bookings/confirm-booking/",
-          {
-            seat_ids: selectedSeats
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        alert("Booking confirmed!");
-
-        setSelectedSeats([]);
-
-      } catch (error) {
-        alert("Booking failed.");
-      }
-    };
   const totalSeats = seats.length;
   const bookedSeats = seats.filter((seat) => seat.is_booked).length;
   const lockedSeats = seats.filter(
@@ -156,7 +130,14 @@ function Seats() {
       <h1 className="text-4xl font-bold text-center mb-10">
         🎬 Select Your Seat
       </h1>
-
+      {selectedSeats.length > 0 && (
+          <button
+            onClick={() => navigate("/payment", { state: { seats: selectedSeats, eventId: id } })}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
+          >
+            Proceed to Payment
+          </button>
+        )}
       {/* Seat Stats */}
       <div className="flex justify-center space-x-8 mb-10 text-sm font-semibold">
         <span>Total: {totalSeats}</span>
@@ -225,38 +206,7 @@ function Seats() {
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex justify-center space-x-8 mt-12 text-sm">
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-green-500 rounded"></div>
-          <span>Available</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-          <span>Locked</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-red-500 rounded"></div>
-          <span>Booked</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-blue-500 rounded"></div>
-          <span>Selected</span>
-        </div>
-      </div>
 
-      {/* Confirm Button */}
-      {selectedSeats.length > 0 && (
-        <div className="flex justify-center mt-10">
-        <button
-          disabled={timeLeft === 0}
-          onClick={handleConfirmBooking}
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg"
-        >
-          Confirm Booking
-        </button>
-        </div>
-      )}
     </div>
   );
 }

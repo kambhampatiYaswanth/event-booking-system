@@ -19,9 +19,9 @@ function AppContent() {
 
       <Routes>
         <Route path="/" element={<Login />} />
-        <Route path="/payment/:seatId" element={<Payment />} />
+        <Route path="/payment" element={<Payment />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/my-bookings/:eventId" element={<MyBookingSeats />} />
+        <Route path="/my-bookings/:bookingId" element={<MyBookingSeats />} />
         <Route
           path="/events"
           element={

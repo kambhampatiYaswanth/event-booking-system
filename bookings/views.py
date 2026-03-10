@@ -8,6 +8,8 @@ from rest_framework.generics import ListAPIView
 from .models import Booking
 from .serializers import BookingSerializer
 from events.models import Seat
+from django.http import FileResponse
+from .ticket_generator import generate_ticket
 
 class LockSeatView(APIView):
     permission_classes = [IsAuthenticated]
@@ -39,6 +41,9 @@ class ConfirmBookingView(APIView):
 
         seats = Seat.objects.filter(id__in=seat_ids)
 
+        if not seats.exists():
+            return Response({"error": "No seats selected"}, status=400)
+
         event = seats.first().event
 
         booking = Booking.objects.create(
@@ -51,12 +56,12 @@ class ConfirmBookingView(APIView):
 
         for seat in seats:
             seat.is_booked = True
-            seat.is_locked = False
             seat.locked_by = None
             seat.save()
 
         return Response({
-            "message": "Booking confirmed"
+            "message": "Booking confirmed",
+            "booking_id": booking.id
         })
 class MyBookingsView(ListAPIView):
     serializer_class = BookingSerializer
@@ -64,3 +69,15 @@ class MyBookingsView(ListAPIView):
 
     def get_queryset(self):
         return Booking.objects.filter(user=self.request.user)
+
+class DownloadTicketView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, booking_id):
+
+        booking = Booking.objects.get(id=booking_id, user=request.user)
+
+        pdf_buffer = generate_ticket(booking)
+
+        return FileResponse(pdf_buffer, as_attachment=True, filename="ticket.pdf")

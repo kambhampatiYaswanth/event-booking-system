@@ -3,98 +3,152 @@ import { useParams } from "react-router-dom";
 import axios from "axios";
 
 function MyBookingSeats() {
-  const { eventId } = useParams();
+
+  const { bookingId } = useParams();
+
   const [seats, setSeats] = useState([]);
   const [mySeatIds, setMySeatIds] = useState([]);
-  
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = localStorage.getItem("access");
+useEffect(() => {
 
-        // Get all seats for event
-        const seatResponse = await axios.get(
-          `https://event-booking-backend-wx17.onrender.com/api/events/${eventId}/seats/`
-        );
+  const fetchData = async () => {
 
-        setSeats(seatResponse.data);
+    try {
 
-        // Get my bookings
-        const bookingResponse = await axios.get(
-          "https://event-booking-backend-wx17.onrender.com/api/bookings/my-bookings/",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+      const token = localStorage.getItem("access");
+
+      // Get all bookings
+      const bookingResponse = await axios.get(
+        "https://event-booking-backend-wx17.onrender.com/api/bookings/my-bookings/",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
           }
-        );
-        console.log("Full booking data:", bookingResponse.data);
-        console.log("First booking full:", bookingResponse.data[0]);
+        }
+      );
 
-        const bookedSeatIdsForEvent = bookingResponse.data
-        .filter(b => Number(b.event.id) === Number(eventId))
-        .flatMap(b => b.seats.map(seatId => Number(seatId)));
-
-        setMySeatIds(bookedSeatIdsForEvent);
-
-      } catch (error) {
-        console.error(error);
+      const booking = bookingResponse.data.find(
+        b => b.id === Number(bookingId)
+      );
+      console.log("BOOKING DATA:", booking);
+      console.log("BOOKING SEATS:", booking.seats);
+      if (!booking) {
+        console.log("Booking not found");
+        return;
       }
-      
-    };
 
-    fetchData();
-  }, [eventId]);
-  
-  // Sort seats properly
+      const eventId = booking.event.id;
+
+      console.log("Event ID:", eventId);
+
+      // Fetch seats for this event
+      const seatResponse = await axios.get(
+        `https://event-booking-backend-wx17.onrender.com/api/events/${eventId}/seats/`
+      );
+
+      console.log("Seats:", seatResponse.data);
+
+      setSeats(seatResponse.data);
+
+      setMySeatIds(booking.seats);
+
+    } catch (error) {
+
+      console.error(error);
+
+    }
+
+  };
+
+  fetchData();
+
+}, [bookingId]);
+
   const sortedSeats = [...seats].sort((a, b) => {
     const numA = parseInt(a.seat_number.replace(/\D/g, ""));
     const numB = parseInt(b.seat_number.replace(/\D/g, ""));
     return numA - numB;
   });
-  
-  
+
+  const downloadTicket = async () => {
+
+    const token = localStorage.getItem("access");
+    console.log("Downloading ticket for booking:", bookingId);
+    const response = await axios.get(
+      `https://event-booking-backend-wx17.onrender.com/api/bookings/download-ticket/${bookingId}/`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        responseType: "blob",
+      }
+    );
+
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.setAttribute("download", "ticket.pdf");
+
+    document.body.appendChild(link);
+
+    link.click();
+  };  
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-10">
+
       <h1 className="text-3xl font-bold text-center mb-10">
-        🎟 Your Seats Overview
+        🎟 Your Seat Overview
       </h1>
 
       <div className="flex justify-center">
+
         <div className="grid grid-cols-8 gap-4">
-            
+
         {sortedSeats.map(seat => {
 
-        const isMySeat = mySeatIds.includes(seat.id);
+          const isMySeat = mySeatIds.includes(seat.id);
 
-        const backgroundColor = isMySeat
+          const backgroundColor = isMySeat
             ? "bg-blue-500"
             : "bg-gray-500";
 
-        return (
+          return (
             <div
-            key={seat.id}
-            className={`${backgroundColor} w-12 h-12 rounded-lg text-white flex items-center justify-center`}
+              key={seat.id}
+              className={`${backgroundColor} w-12 h-12 rounded-lg text-white flex items-center justify-center`}
             >
-            {seat.seat_number}
+              {seat.seat_number}
             </div>
-        );
+          );
+
         })}
+
         </div>
+
+      </div>
+      <button
+        onClick={downloadTicket}
+        className="bg-green-500 px-6 py-2 rounded-lg mt-10"
+      >
+        Download Ticket
+      </button>
+      <div className="flex justify-center mt-10 space-x-6">
+
+        <div className="flex items-center space-x-2">
+          <div className="w-4 h-4 bg-blue-500 rounded"></div>
+          <span>Your Seats</span>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <div className="w-4 h-4 bg-gray-500 rounded"></div>
+          <span>Other Seats</span>
+        </div>
+
       </div>
 
-      {/* Legend */}
-        <div className="flex justify-center mt-10 space-x-6">
-        <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-blue-500 rounded"></div>
-            <span>Your Seats</span>
-        </div>
-        <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-gray-600 rounded"></div>
-            <span>Other Seats</span>
-        </div>
-        </div>
     </div>
   );
 }
