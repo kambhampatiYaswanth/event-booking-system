@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
-
+import { useNavigate } from "react-router-dom";
 function MyBookingSeats() {
 
   const { bookingId } = useParams();
 
   const [seats, setSeats] = useState([]);
+  const navigate = useNavigate();
   const [mySeatIds, setMySeatIds] = useState([]);
 
 useEffect(() => {
@@ -94,7 +95,38 @@ useEffect(() => {
     document.body.appendChild(link);
 
     link.click();
-  };  
+  }; 
+  const cancelBooking = async () => {
+
+  const confirmCancel = window.confirm("Are you sure you want to cancel this booking?");
+
+  if (!confirmCancel) return;
+
+  try {
+
+    const token = localStorage.getItem("access");
+
+    await axios.post(
+      `https://event-booking-backend-wx17.onrender.com/api/bookings/cancel-booking/${bookingId}/`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    alert("Booking cancelled");
+
+    navigate("/my-bookings");
+
+  } catch (error) {
+
+    alert("Cancellation failed");
+
+  }
+
+}; 
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-10">
@@ -135,6 +167,12 @@ useEffect(() => {
       >
         Download Ticket
       </button>
+      <button
+        onClick={cancelBooking}
+        className="bg-red-500 px-6 py-2 rounded-lg mt-4 ml-4"
+      >
+        Cancel Booking
+      </button>      
       <div className="flex justify-center mt-10 space-x-6">
 
         <div className="flex items-center space-x-2">

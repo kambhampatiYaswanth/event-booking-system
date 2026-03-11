@@ -81,3 +81,30 @@ class DownloadTicketView(APIView):
         pdf_buffer = generate_ticket(booking)
 
         return FileResponse(pdf_buffer, as_attachment=True, filename="ticket.pdf")
+    
+class CancelBookingView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, booking_id):
+
+        try:
+            booking = Booking.objects.get(id=booking_id, user=request.user)
+
+            seats = booking.seats.all()
+
+            for seat in seats:
+                seat.is_booked = False
+                seat.save()
+
+            booking.delete()
+
+            return Response({
+                "message": "Booking cancelled successfully"
+            })
+
+        except Booking.DoesNotExist:
+            return Response(
+                {"error": "Booking not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )    
