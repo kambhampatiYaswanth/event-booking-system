@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+
 
 function Events() {
   const [events, setEvents] = useState([]);
@@ -8,21 +10,29 @@ function Events() {
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");  
+  const location = useLocation();
 
   useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const response = await axios.get(
-          "https://event-booking-backend-wx17.onrender.com/api/events/"
-        );
-        setEvents(response.data);
-      } catch (error) {
-        console.error(error);
-      }
-    };
+  const fetchEvents = async () => {
+
+    try {
+
+      const response = await axios.get(
+        "https://event-booking-backend-wx17.onrender.com/api/events/"
+      );
+
+      setEvents(response.data);
+
+    } catch (error) {
+
+      console.error("Error fetching events:", error);
+
+    }
+
+  };
 
     fetchEvents();
-  }, []);
+  }, [location]);
     const filteredEvents = events.filter((event) => {
       const matchesSearch =
         event.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -122,7 +132,7 @@ function Events() {
                         : "bg-green-100 text-green-600"
                     }`}
                   >
-                    {seatsLeft} Seats Left
+                    {event.seats_left} Seats Left
                   </span>
                   
                   <button

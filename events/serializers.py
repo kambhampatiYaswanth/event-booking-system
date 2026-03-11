@@ -6,11 +6,18 @@ from rest_framework import serializers
 from .models import Seat
 
 class EventSerializer(serializers.ModelSerializer):
+
+    seats_left = serializers.SerializerMethodField()
+
     class Meta:
         model = Event
         fields = "__all__"
 
-
+    def get_seats_left(self, obj):
+        total_seats = obj.seats.count()
+        booked_seats = obj.seats.filter(is_booked=True).count()
+        return total_seats - booked_seats
+    
 class SeatSerializer(serializers.ModelSerializer):
     locked_by = serializers.PrimaryKeyRelatedField(read_only=True)
 
